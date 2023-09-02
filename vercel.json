@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "index.js"
     }
-  ],"env": {
-  "PORT": "3003",
-  "EXTERNAL_MIDDLEWARE": "@sls-next/socket-io-middleware" 
-}
+  ]
 }
