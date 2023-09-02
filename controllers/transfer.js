@@ -3,20 +3,6 @@ const Transaction = require("../models/transfer");
 const BankCard = require("../models/bankcards");
 const Notification = require("../models/notifications");
 const moment = require("moment");
-const http = require('http');
-const express = require('express');
-const socketIO = require('socket.io');
-const cors = require("cors");
-
-const app = express();
-app.use(cors());
-
-const server = http.createServer(app);
-const io = socketIO(server, {
-    cors: {
-        origin: '*'
-    }
-});
 
 
 const sendNotification = (amount, senderCardNumber, receiverCardNumber, userId) => {
@@ -28,39 +14,22 @@ const sendNotification = (amount, senderCardNumber, receiverCardNumber, userId) 
         sender: userId,
         card: receiverCardNumber
     });
-    io.emit('notification', notification); // Tüm soketlere bildirimi gönder
-
     try {
         const savedNotification = notification.save();
-        // console.log("Bildirim başarıyla kaydedildi:", savedNotification);
     } catch (error) {
-        // console.error("Bildirim kaydedilirken bir hata oluştu:", error);
     }
 };
 
-const deleteNotifications = () => {
-    const deleteNotification = `Bildiriş silindi`
-    io.emit('deleteNotification', deleteNotification)
-}
 
-// Soket bağlantısı
 
 const transferMoney = async (req, res) => {
     try {
         const { senderCardNumber, receiverCardNumber, amount } = req.body;
-        // console.log(req.body)
-        // console.log(senderCardNumber, receiverCardNumber, amount)
         const senderCard = await BankCard.findOne({ "cards.cardNumber": senderCardNumber });
         const receiverCard = await BankCard.findOne({ "cards.cardNumber": receiverCardNumber });
-        // console.log(senderCard, "senderCard")
-        // console.log(receiverCard, "receiverCard")
-        // console.log(senderCard)
         if (!senderCard || !receiverCard) {
             return res.status(404).json({ message: "kart tapılmadı" });
         }
-        // const userLocation = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-        // const userLocation = await getLocationFromExternalAPI();
-        // console.log("userLocation", userLocation);
         for (let card of senderCard.cards) {
             // console.log(card.cardNumber, senderCardNumber);
             if (card.cardNumber === senderCardNumber) {
@@ -70,7 +39,6 @@ const transferMoney = async (req, res) => {
                     card.balance -= amount
                     let currentDate = new Date();
                     currentDate = currentDate.toString()
-                    // currentDate.toTimeString()
 
                     const outcomne = new Transaction({
                         type: "Outgoing",
@@ -80,11 +48,9 @@ const transferMoney = async (req, res) => {
                         userId: receiverCard.user.toString()
                     })
                     await outcomne.save();
-                    // console.log("s")
                     break;
                 }
             } else {
-                // console.log("ss")
             }
         }
         await senderCard.save();
@@ -105,16 +71,11 @@ const transferMoney = async (req, res) => {
                 })
 
                 await incomne.save();
-                // Para transferi gerçekleştiğinde bildirim gönderme
             }
 
-            // console.log("ssss")
         }
         await receiverCard.save();
         sendNotification(amount, senderCardNumber, receiverCardNumber, receiverCard.user.toString());
-
-        // res.send(receiverCard)
-        // res.send(senderCard)
 
         return res.status(200).json({
             message: "Transaction completed successfully",
@@ -126,65 +87,15 @@ const transferMoney = async (req, res) => {
     }
 };
 
-// const nodemailer = require('nodemailer');
-// function generateRandomCode() {
-//     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-//     const codeLength = 6;
-//     let code = '';
-//
-//     for (let i = 0; i < codeLength; i++) {
-//         const randomIndex = Math.floor(Math.random() * characters.length);
-//         code += characters.charAt(randomIndex);
-//     }
-//
-//     return code;
-// }
-// let transporter = nodemailer.createTransport({
-//     host: 'smtp.gmail.com',
-//     port: 465,
-//     secure: true,
-//     auth: {
-//         user: 'yusifovs1009@gmail.com',
-//         pass: '10092020msMS'
-//     }
-// });
 
 const getTransactions = async (req, res) => {
     const { userId } = req.params;
-    // console.log(userId)
-
-    // const code = generateRandomCode();
-    //
-    // const mailOptions = {
-    //     from: 'yusifovs1009@gmail.com',
-    //     to: 'yusifov.dev@gmail.com',
-    //     subject: 'Giriş Kodu',
-    //     text: `Giriş yapmak için kullanmanız gereken kod: ${code}`
-    // };
-    //
-    // transporter.sendMail(mailOptions, function (error, info)  {
-    //     if (error) {
-    //         console.log(error);
-    //         res.status(500).send('Bir hata oluştu');
-    //     } else {
-    //         console.log('E-posta gönderildi: ' + info.response);
-    //         res.send('Giriş kodu e-posta adresinize gönderildi.');
-    //     }
-    // });
     try {
-        // const transactions = await Transaction.find({ $or: [{ senderUserId: userId }, { receiverUserId: userId }] });
-        // const transactions = await Transaction.find({ senderUserId: userId });
         const transactions = await Transaction.find({ userId: userId });
         if (!transactions) {
             return res.status(404).json({ message: "Transactions tapılmadı" });
         }
-        // io.emit('transactions', transactions);
-        // console.log(transactions)
         res.send(transactions);
-        // const transaction = await Transaction.find(req.body);
-        // console.log(transactions);
-
-
         res.status(200).json({ message: "Transactions found", transactions: transactions });
     }
     catch (error) {
@@ -194,13 +105,11 @@ const getTransactions = async (req, res) => {
 
 const getTransactionsByCardNumber = async (req, res) => {
     const { userId } = req.params;
-    // console.log(userId)
     try {
         const transactionsD = await Transaction.find({ cardNumber: userId });
         if (!transactionsD) {
             return res.status(404).json({ message: "Transactions tapılmadı" });
         }
-        // console.log(transactionsD)
         res.send(transactionsD);
 
 
@@ -211,16 +120,10 @@ const getTransactionsByCardNumber = async (req, res) => {
     }
 
 }
-// const filterTransactions = async (req, res) => {
-//
-//
-//
-// }
 
 const getUserNotifications = async (req, res) => {
     try {
-        const { userId } = req.params; // Kullanıcının kimliğini alın (örneğin, oturum açmış bir kullanıcı olarak varsayıyoruz)
-
+        const { userId } = req.params;
         const notifications = await Notification.find({ sender: userId });
         if (!notifications) {
             return res.status(404).json({ message: "Bildirimler tapılmadı" });
@@ -236,39 +139,15 @@ const getUserNotifications = async (req, res) => {
 const deleteNotification = async (req, res) => {
     try {
         const { notificationId } = req.params;
-        // console.log(notificationId)
 
         const notification = await Notification.findByIdAndRemove(notificationId);
         if (!notification) {
             return res.status(404).json({ message: "Bildiriş tapılmadı" });
         }
-
-        // console.log(notification)
-        deleteNotifications()
         res.status(200).json({ message: "Bildiriş  silindi" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 
 }
-
-io.on('connection', (socket) => {
-    // console.log('Yeni bir istemci bağlandı.');
-    // console.log("User connected: ", socket.id);
-    // socket.join(userId);
-
-    // Soket bağlantısı kapatıldığında
-    socket.on('disconnect', () => {
-        console.log('Bir istemci ayrıldı.');
-    });
-
-    // Bildirim gönderme işlemi
-
-});
-
-
-server.listen(3000, () => {
-    console.log('Sunucu çalışıyor. Port: 3000');
-});
-
 module.exports = { transferMoney, getTransactions, getUserNotifications, deleteNotification, getTransactionsByCardNumber }
